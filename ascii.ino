@@ -1,12 +1,23 @@
 
-enum Acmds { A_NONE, A_ST, A_SR, A_GR, A_GI, A_AL };
+enum Acmds { A_NONE, A_ST, A_SR, A_GR, A_GI, A_AL, A_ID, A_GS };
 enum A_SM { SM_WAITING, SM_READING };
 
 WiFiClient Aclient;
+char ALine[300];
+
+int checkPassword(void)
+{
+  int idx, x=0;
+  while(isspace(ALine[x])) ++x;       // skip white space
+  for(idx=0; idx<strlen(AsciiPassword); idx++, x++)
+  {
+    if(ALine[x]!=AsciiPassword[idx]) return -1;
+  }
+  return x;
+}
 
 void modeAscii(void)
 {
-static char ALine[300];
 static int idx = 0, SM_State=SM_WAITING;
 int cmd = 0, rly, state;
 
@@ -17,31 +28,44 @@ int cmd = 0, rly, state;
         SM_State = SM_READING;              // if you get a client
         Serial.println("New Ascii Client.");           // print a message out the serial port
       }
+      idx = 0;
       break;
       
     case SM_READING:
       if(Aclient.connected()) {
         if (Aclient.available()) {             // if there's bytes to read from the client,
           char c = Aclient.read();             // read a byte, then
-          ALine[idx++] = toupper(c);
+          ALine[idx++] = c;
           if (c == '\n') {                    // if the byte is a newline character
             ALine[idx] = 0;
+            idx = checkPassword();
+            if(idx < 0) {
+              Aclient.println("Failed");
+              idx = 0;
+              return;
+            }
   
-            if(ALine[0] == 'S') {
-              if(ALine[1] == 'T') cmd = A_ST;       // Status command
-              else if(ALine[1] == 'R') cmd = A_SR;  // Set Relay command
+            while(isspace(ALine[idx])) ++idx;       // skip white space
+            ALine[idx] = toupper(ALine[idx]);
+            ALine[idx+1] = toupper(ALine[idx+1]);
+            if(ALine[idx] == 'S') {
+              if(ALine[idx+1] == 'T') cmd = A_ST;       // Status command
+              else if(ALine[idx+1] == 'R') cmd = A_SR;  // Set Relay command
             }
-            else if(ALine[0] == 'G') {
-              if(ALine[1] == 'R') cmd = A_GR;       // Get Relay command
-              else if(ALine[1] == 'I') cmd = A_GI;  // Get Input command
+            else if(ALine[idx] == 'G') {
+              if(ALine[idx+1] == 'R') cmd = A_GR;       // Get Relay command
+              else if(ALine[idx+1] == 'I') cmd = A_GI;  // Get Input command
+              else if(ALine[idx+1] == 'S') cmd = A_GS;  // Get All packed, Relay/Input, Relays:Inputs, example 5A:C2
             }
-            else if(ALine[0] == 'A') {
-              if(ALine[1] == 'L') cmd = A_AL;       // Get Relay command
+            else if(ALine[idx] == 'A') {
+              if(ALine[idx+1] == 'L') cmd = A_AL;       // Get Relay command
             }
-            idx = 2;                                // first char after the command
+            else if(ALine[idx] == 'I') {
+              if(ALine[idx+1] == 'D') cmd = A_ID;       // Get ID command
+            }
+           idx += 2;                                // first char after the command
             switch(cmd) {
               case A_SR:
-                idx = 2;
                 while(isspace(ALine[idx])) ++idx;     // skip white space
                 rly = ALine[idx++];
                 while(isspace(ALine[idx])) ++idx;     // skip white space
@@ -51,7 +75,6 @@ int cmd = 0, rly, state;
                 idx = 0;
                 break;
               case A_GR:
-                idx = 2;
                 while(isspace(ALine[idx])) ++idx;     // skip white space
                 rly = ALine[idx++];
                 switch(getRelay(rly)) {
@@ -62,7 +85,6 @@ int cmd = 0, rly, state;
                 idx = 0;
                 break;
               case A_GI:
-                idx = 2;
                 while(isspace(ALine[idx])) ++idx;     // skip white space
                 rly = ALine[idx++];
                 switch(getInput(rly)) {
@@ -73,7 +95,6 @@ int cmd = 0, rly, state;
                 idx = 0;
                 break;            
               case A_AL:
-                idx = 2;
                 while(isspace(ALine[idx])) ++idx;     // skip white space
                 for(rly=0x31; rly<0x39; rly++) {
                   state = ALine[idx++];
@@ -85,6 +106,15 @@ int cmd = 0, rly, state;
                   Aclient.write(state+0x30);
                 }
                 Aclient.println();              
+                idx = 0;
+                break;
+              case A_GS:
+                sprintf(ALine, "%02X:%02X", packRelays(), packInputs());
+                  Aclient.println(ALine);
+                  idx = 0;
+                break;
+              case A_ID:
+                Aclient.println(moduleID);      // send module ID
                 idx = 0;
                 break;
               default:
@@ -154,5 +184,30 @@ char getInput(char inp)
   return '?';
 }
 
+int packRelays(void)
+{
+  int x = 0;
+  if(digitalRead(Rly1)) x |= 0x01;
+  if(digitalRead(Rly2)) x |= 0x02;
+  if(digitalRead(Rly3)) x |= 0x04;
+  if(digitalRead(Rly4)) x |= 0x08;
+  if(digitalRead(Rly5)) x |= 0x10;
+  if(digitalRead(Rly6)) x |= 0x20;
+  if(digitalRead(Rly7)) x |= 0x40;
+  if(digitalRead(Rly8)) x |= 0x80;
+  return x;
+}
 
-
+int packInputs(void)
+{
+  int x = 0;
+  if(digitalRead(Inp1)) x |= 0x01;
+  if(digitalRead(Inp2)) x |= 0x02;
+  if(digitalRead(Inp3)) x |= 0x04;
+  if(digitalRead(Inp4)) x |= 0x08;
+  if(digitalRead(Inp5)) x |= 0x10;
+  if(digitalRead(Inp6)) x |= 0x20;
+  if(digitalRead(Inp7)) x |= 0x40;
+  if(digitalRead(Inp8)) x |= 0x80;
+  return x;
+}

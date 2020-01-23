@@ -1,5 +1,5 @@
 
-enum cmds { CMD_NONE, CMD_ST, CMD_RB, CMD_IP, CMD_SB, CMD_GW, CMD_PD, CMD_SD, CMD_SS, CMD_PW, CMD_PA, CMD_MS, CMD_MP, CMD_MD, 
+enum cmds { CMD_NONE, CMD_ST, CMD_RB, CMD_IP, CMD_SB, CMD_GW, CMD_AP, CMD_PD, CMD_SD, CMD_SS, CMD_PW, CMD_PA, CMD_MS, CMD_MP, CMD_MD, 
             CMD_R1, CMD_R2, CMD_R3, CMD_R4, CMD_R5, CMD_R6, CMD_R7, CMD_R8,
             CMD_N1, CMD_N2, CMD_N3, CMD_N4, CMD_N5, CMD_N6, CMD_N7, CMD_N8
           };
@@ -46,8 +46,10 @@ uint port;
         Serial.println(IP.toString());
         Serial.print("SSID: ");
         Serial.println(ssid);
-        Serial.print("Password: ");
+        Serial.print("WifiPassword: ");
         Serial.println(password2);
+        Serial.print("AsciiPassword: ");
+        Serial.println(AsciiPassword);
         Serial.print("ASCII TCP Port: ");
         Serial.println(AsciiPort);
         Serial.print("RSSI: ");
@@ -156,14 +158,25 @@ uint port;
       case CMD_PW:
         p = getStrPtr(&buffer[3]);
         if(p) {
-          nvm.putString("password", p);
-          nvm.getString("password", password, sizeof(password)-1);
-          strcpy(password2, password);
-          Serial.print("OK. Saved Password: "); 
+          nvm.putString("WifiPassword", p);
+          nvm.getString("WifiPassword", WifiPassword, sizeof(WifiPassword)-1);
+          strcpy(password2, WifiPassword);
+          Serial.print("OK. Saved WifiPassword: "); 
           Serial.println(password2);   
           WiFi.disconnect(); 
         }
-        else Serial.println("Password string not found");    
+        else Serial.println("WifiPassword string not found");    
+        break;
+      case CMD_AP:
+        p = getStrPtr(&buffer[3]);
+        if(p) {
+          nvm.putString("AsciiPassword", p);
+          nvm.getString("AsciiPassword", AsciiPassword, sizeof(AsciiPassword)-1);
+          Serial.print("OK. Saved AsciiPassword: "); 
+          Serial.println(AsciiPassword);    
+          WiFi.disconnect();
+        }
+        else Serial.println("AsciiPassword string not found");    
         break;
       case CMD_PA:
         AsciiPort = getNumber(&buffer[3]);
@@ -445,6 +458,9 @@ int getCommand()
   }
   else if(toupper(buffer[0]) == 'G') {
     if(toupper(buffer[1]) == 'W') return CMD_GW; 
+  }
+  else if(toupper(buffer[0]) == 'A') {
+    if(toupper(buffer[1]) == 'P') return CMD_AP; 
   }
   else if(toupper(buffer[0]) == 'P') {
     if(toupper(buffer[1]) == 'D') return CMD_PD; 
