@@ -68,7 +68,7 @@ void reconnect() {
     if(WiFi.status() != WL_CONNECTED) return; //WIFI disconnected so don't attempt reconnect
     Serial.print("Attempting MQTT connection...");
     // Attempt to connect
-    if (MQTTclient.connect(MqttID)) {
+    if (MQTTclient.connect(MqttID,MqttUser,MqttPasswd)) {
       Serial.println("connected");
       
 // subscribe

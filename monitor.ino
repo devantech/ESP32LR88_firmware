@@ -1,5 +1,5 @@
 
-enum cmds { CMD_NONE, CMD_ST, CMD_RB, CMD_IP, CMD_SB, CMD_GW, CMD_AP, CMD_PD, CMD_SD, CMD_SS, CMD_PW, CMD_PA, CMD_MS, CMD_MP, CMD_MD, 
+enum cmds { CMD_NONE, CMD_ST, CMD_RB, CMD_IP, CMD_SB, CMD_GW, CMD_AP, CMD_PD, CMD_SD, CMD_SS, CMD_PW, CMD_PA, CMD_MS, CMD_MP, CMD_MU, CMD_MW, CMD_MD, 
             CMD_R1, CMD_R2, CMD_R3, CMD_R4, CMD_R5, CMD_R6, CMD_R7, CMD_R8,
             CMD_N1, CMD_N2, CMD_N3, CMD_N4, CMD_N5, CMD_N6, CMD_N7, CMD_N8
           };
@@ -61,6 +61,10 @@ uint port;
         Serial.println(MqttPort);
         Serial.print("MQTT ID: ");
         Serial.println(MqttID);
+        Serial.print("MQTT User: ");
+        Serial.println(MqttUser);
+        Serial.print("MQTT Password: ");
+        Serial.println(mqttpasswd2);
         Serial.print("Relay1 Topic: ");
         Serial.println(R1Topic);
         Serial.print("Relay2 Topic: ");
@@ -212,6 +216,27 @@ uint port;
         nvm.putUInt("MqttPort", MqttPort);
         Serial.print("OK. Saved MQTT port number: "); 
         Serial.println(MqttPort);  
+        break;
+      case CMD_MU:
+        p = getStrPtr(&buffer[3]);
+        if(p) {
+          nvm.putString("MqttUser", p);
+          nvm.getString("MqttUser", MqttUser, BUFSIZE-1);
+          Serial.print("OK. Saved MQTT User: "); 
+          Serial.println(MqttUser);    
+        }
+        else Serial.println("MQTT User string not found");    
+        break;
+        case CMD_MW:
+        p = getStrPtr(&buffer[3]);
+        if(p) {
+          nvm.putString("MqttPasswd", p);
+          nvm.getString("MqttPasswd", MqttPasswd, BUFSIZE-1);
+          strcpy(mqttpasswd2, MqttPasswd);
+          Serial.print("OK. Saved MQTT Password: "); 
+          Serial.println(MqttPasswd);    
+        }
+        else Serial.println("MQTT Password string not found");    
         break;
       case CMD_R1:
         p = getStrPtr(&buffer[3]);
@@ -471,6 +496,8 @@ int getCommand()
     if(toupper(buffer[1]) == 'P') return CMD_MP; // MQTT Port
     if(toupper(buffer[1]) == 'S') return CMD_MS; // MQTT Server
     if(toupper(buffer[1]) == 'D') return CMD_MD; // MQTT ID
+    if(toupper(buffer[1]) == 'U') return CMD_MU; // MQTT User
+    if(toupper(buffer[1]) == 'W') return CMD_MW; // MQTT Password
   }
   else if(toupper(buffer[0]) == 'R') {
     if(toupper(buffer[1]) == 'B') return CMD_RB; // ReBoot
