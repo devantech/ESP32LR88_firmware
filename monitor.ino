@@ -430,15 +430,27 @@ char* skipWhite(char *p)
 
 char * getStrPtr(char *p)
 {
-char *p1;
+char *p1, *p2;
 
   p = skipWhite(p);
   if(*p!='"') return 0;
   p1 = ++p; 
-  while(*p && (*p!='"') ) ++p;
-  if(*p=='"') {
-    *p = 0;
-    return p1;
+  p2 = p1;
+  while( *p )  {
+    if(*p == '\\') {
+      if(p[1]=='\\' || p[1]=='"') {
+        *p2++ = p[1];
+        p += 2; 
+      }
+      else ++p;     // ignore single escape char
+    }
+    else {
+      if(*p=='"') {
+        *p2 = 0;
+        return p1;
+      }
+      *p2++ = *p++;
+    }
   }
   return 0;
 }
