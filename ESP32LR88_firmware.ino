@@ -3,12 +3,14 @@
  * V1.7
  * Added escape char \ so that double quote (") can be included in passwords
  * 
+ * v1.8
+ * Fix issue that caused crash on boot due to null comparison
  ******************************************************************************/
 
 #include <Preferences.h>
 #include <WiFi.h>
 
-const char ver[] = {"1.7"};
+const char ver[] = {"1.8"};
 const char moduleID = 41;       // ESP32LR20 = 39, LR42=40, LR88=41
 
 Preferences nvm;
@@ -162,11 +164,12 @@ void wifi_connect(void)
     Serial.print(ssid);
     Serial.println("...");
 
-    if(local_IP != 0) {
+    if((uint32_t)local_IP != 0) {
       if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS)) {
         Serial.println("STA Failed to configure");
       }
     }
+
     WiFi.mode(WIFI_STA);
 
     while(WiFi.status() != WL_CONNECTED){
